@@ -10,20 +10,59 @@ y0 = 32
 # frame positions from 0 to 63 respectively
 frame_size = 64
 cirStr = 1
+dx = 0.1
+smoothing = 1
 
 #
 class FluidSolver:
-    def __init__(self, particles: np.ndarray, n_particles: int, boundary: np.ndarray):
+    def __init__(self, particles: np.ndarray, n_particles: int, boundary: np.ndarray, time: int):
         self.positions = particles[0]
         self.vorticities = particles[1]
         self.n_particles = n_particles
         self.boundary = np.size(particles)
+        self.velocity_field = np.zeros((frame_size**2, 2))
+        self.velocity_prev = np.zeros((frame_size**2, 2))
+        self.time = time
+
+    # scan through vortons
+    def prepare_solver():
+        pass
 
     def compute_velocity_field():
-        pass
 
-    def convection():
-        pass
+        FluidSolver.velocity_prev = FluidSolver.velocity_field
+
+        # outer loop for each particle in the field
+        for i in range(FluidSolver.n_particles):
+            xth_pos = FluidSolver.positions[i]
+            summation = 0
+            
+            for j in range(FluidSolver.n_particles):
+                if j == i:
+                    continue
+
+                iX = xth_pos - FluidSolver.positions[j]
+                iP = abs(iX) / smoothing
+                funcQ = (1 / (2 * mt.pi)) * (1 - mt.exp((-(iP**2)) / 2))
+                circulation = np.cross(iX, FluidSolver.vorticities[j])
+                sum1 = (circulation * funcQ) / (abs(iX)**2)
+                summation += sum1
+            FluidSolver.velocity_field[i] = -summation
+
+        return
+
+    def convection(time):
+        
+        for i in range(FluidSolver.n_particles):
+            xth = FluidSolver.positions[i]
+            xth_vor = FluidSolver.vorticities[i]
+
+            if (time == 0):
+                FluidSolver.positions[i] += time_step * FluidSolver.velocity_field[i]
+            else:
+                FluidSolver.positions[i] = xth + (time_step * (((3/2) * FluidSolver.velocity_field[i]) - ((1/2) * FluidSolver.velocity_prev[i])))
+
+        return
 
     def diffusion():
         pass
@@ -44,7 +83,7 @@ def initialGrid() -> tuple:
             posVorticity = initVor(positionTemp)
 
             index = x * frame_size + y
-            positions[index] = np.array([x, y])
+            positions[index] = np.array([x * dx, y * dx])
             vorticities[index] = posVorticity
     
     return (positions, vorticities)

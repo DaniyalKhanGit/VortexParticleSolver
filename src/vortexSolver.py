@@ -25,9 +25,24 @@ class FluidSolver:
         self.time = time
 
     # scan through vortons
-    def prepare_solver():
-        pass
+    def prepare_solver(new_time: int):
+        FluidSolver.time = new_time
 
+        for i in range(FluidSolver.n_particles):
+            if FluidSolver.vorticities[i] == 0:
+                # remove the particle
+                tempVor = FluidSolver.vorticities[i]
+                tempPos = FluidSolver.positions[i]
+                indice = FluidSolver.n_particles - 1
+
+                FluidSolver.vorticities[i] = FluidSolver.vorticities[indice]
+                FluidSolver.positions[i] = FluidSolver.vorticities[indice]
+                FluidSolver.vorticities[indice] = 0
+                FluidSolver.positions[indice] = 0
+
+                FluidSolver.n_particles = 0
+
+    # also need improvement
     def compute_velocity_field():
 
         FluidSolver.velocity_prev = FluidSolver.velocity_field
@@ -51,6 +66,7 @@ class FluidSolver:
 
         return
 
+    # need improve
     def convection(time):
         
         for i in range(FluidSolver.n_particles):
@@ -65,12 +81,13 @@ class FluidSolver:
         return
 
     def diffusion():
-        pass
+        FluidSolver.positions += np.random.uniform(0, mt.sqrt(2 * time_step * 0.01))
+
 
 # general functions
 def initVor(x: np.ndarray) -> int: 
     r_squared = (x[0] - x0)**2 + (x[1] - y0)**2
-    return (cirStr / (4 * np.pi * 0.0001)) * np.exp(-r_squared / (4 * 0.0001))
+    return (cirStr / (4 * np.pi * 0.01 * 0.01)) * np.exp(-r_squared / (4 * 0.01 * 0.01))
 
 def initialGrid() -> tuple:
 

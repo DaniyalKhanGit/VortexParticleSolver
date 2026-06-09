@@ -4,12 +4,13 @@ import vortexSolver as vs
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 
-max_iterates = 10
+max_iterates = 5
 frames = []
 
 sim = vs.FluidSolver(vs.initialGrid())
 for t in range(max_iterates):
     sim.step()
+    print(t, "done")
     frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 fig, ax = plt.subplots()
@@ -23,6 +24,7 @@ def update(i):
     return [scatter]
 
 animation = ani.FuncAnimation(fig, update, frames=len(frames), interval=1000)
+animation.save('../VortexParticleSolver/testoutputs/VortexSim.gif', writer='pillow', fps=1)
 plt.show()
 
 

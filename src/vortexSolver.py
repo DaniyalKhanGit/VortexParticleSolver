@@ -47,26 +47,36 @@ class FluidSolver:
     # also need improvement
     def compute_velocity_field(self):
 
-        self.velocity_prev = self.velocity_field
+        self.velocity_prev = self.velocity_field.copy()
 
         # outer loop for each particle in the field
         for i in range(self.n_particles):
             xth_pos = self.positions[i]
             summation = 0
-            
+            '''
+            # inner loop for every other particle
             for j in range(self.n_particles):
                 if j == i:
                     continue
 
-                iX = xth_pos - self.positions[j]
-                iP = np.linalg.norm(iX) / smoothing
-                funcQ = (1 / (2 * mt.pi)) * (1 - np.exp((-(iP**2)) / 2))
-                circulation = np.array([-self.vorticities[j] * iX[1], self.vorticities[j] * iX[0]])
-                sum1 = (circulation * funcQ) / ((np.linalg.norm(iX)**2) + mt.exp(-100))
-                summation += sum1
-            self.velocity_field[i] = -summation
+                iXo = xth_pos - self.positions[j]
+                iPo = np.linalg.norm(iXo) / smoothing
+                funcQo = (1 / (2 * mt.pi)) * (1 - np.exp((-(iPo**2)) / 2))
+                circulationO = np.array([-self.vorticities[j] * iXo[1], self.vorticities[j] * iXo[0]])
+                sum1o = (circulationO * funcQo) / ((np.linalg.norm(iXo)**2) + mt.exp(-100))
+                summationO += sum1o
+            '''
+            # vectorized inner loop
 
-        return
+            iX = xth_pos - self.positions
+            iP = np.linalg.norm(iX, axis=1) / smoothing
+            funcQ = (1 / (2 * np.pi)) * (1 - np.exp((-(iP**2)) / 2))
+            circulation = np.array([-self.vorticities * iX[:,1], self.vorticities * iX[:,0]])
+            sum1 = (circulation * funcQ) / ((np.linalg.norm(iX, axis=1)**2) + mt.exp(-100))
+            summation = np.sum(sum1, axis=1)
+
+            self.velocity_field[i] = -summation
+            return
 
     # need improve
     def convection(self):

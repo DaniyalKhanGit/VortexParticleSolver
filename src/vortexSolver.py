@@ -4,9 +4,11 @@ import tracing as trace
 
 # constants
 
-time_step = 1
+time_step = 0.5
 x0 = 32
 y0 = 32
+kv = 0.1
+t0 = 100
 # frame positions from 0 to 63 respectively
 frame_size = 64
 cirStr = 1
@@ -57,10 +59,10 @@ class FluidSolver:
                     continue
 
                 iX = xth_pos - self.positions[j]
-                iP = abs(iX) / smoothing
+                iP = np.linalg.norm(iX) / smoothing
                 funcQ = (1 / (2 * mt.pi)) * (1 - np.exp((-(iP**2)) / 2))
-                circulation = (-self.vorticities[j] * iX[1], self.vorticities[j] * iX[0])
-                sum1 = (circulation * funcQ) / ((abs(iX)**2) + mt.exp(-100))
+                circulation = np.array([-self.vorticities[j] * iX[1], self.vorticities[j] * iX[0]])
+                sum1 = (circulation * funcQ) / ((np.linalg.norm(iX)**2) + mt.exp(-100))
                 summation += sum1
             self.velocity_field[i] = -summation
 
@@ -96,7 +98,7 @@ class FluidSolver:
 # general functions
 def initVor(x: np.ndarray) -> int: 
     r_squared = (x[0] - x0)**2 + (x[1] - y0)**2
-    return (cirStr / (4 * np.pi * 0.01 * 0.01)) * np.exp(-r_squared / (4 * 0.01 * 0.01))
+    return (cirStr / (4 * np.pi * kv * t0)) * np.exp(-r_squared / (4 * kv * t0))
 
 def initialGrid() -> tuple:
 

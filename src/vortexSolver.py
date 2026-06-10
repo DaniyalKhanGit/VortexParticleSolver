@@ -85,6 +85,15 @@ class FluidSolver:
     def diffusion(self):
         self.positions += np.random.normal(0, np.sqrt(2 * time_step * 0.01), size=self.positions.shape)
 
+    def force_addition(self):
+        pass
+
+    def no_slip_boundary(self):
+        pass
+
+    def no_through_boundary(self):
+        pass
+
     def step(self):
         self.prepare_solver(self.time + time_step)
         print("prep done")
@@ -126,3 +135,10 @@ def analyticalVorticity(positions: np.ndarray, time: int):
     r_sq = (positions[:, 0] - x0)**2 + (positions[:,1] - y0)**2
     return (cirStr / (4 * np.pi * kv * time)) * np.exp(-r_sq / (4 * kv * time))
 
+def boundaryComputation(positionA, positionB) -> tuple:
+    # [x, y], [a, b]
+    length = np.linalg.norm(positionA - positionB)
+    midpoint = np.array([((positionA[0] + positionB[0]) / 2), ((positionA[1] + positionB[1]) / 2)])
+    normal = (positionA[:, 0] * positionB[:, 1]) - (positionA[:, 1] * positionB[:,0])
+
+    return (length, midpoint, normal)

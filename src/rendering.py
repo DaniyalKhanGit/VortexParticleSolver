@@ -4,15 +4,15 @@ import vortexSolver as vs
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 
-max_iterates = 150
+max_iterates = 50
 frames = []
 
 sim = vs.FluidSolver(vs.initialGrid())
 frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 # tracking code
-center = np.array([3.2, 3.2])
-initial_angles = np.arctan2(sim.positions[:,1] - center[1], sim.positions[:,0] - center[0])
+#center = np.array([3.2, 3.2])
+#initial_angles = np.arctan2(sim.positions[:,1] - center[1], sim.positions[:,0] - center[0])
 
 for t in range(1, max_iterates + 1):
     sim.step()
@@ -20,8 +20,8 @@ for t in range(1, max_iterates + 1):
     frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 fig, ax = plt.subplots()
-# scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
-scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='coolwarm')
+scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
+#scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='hsv')
 plt.colorbar(scatter)
 
 def update(i):

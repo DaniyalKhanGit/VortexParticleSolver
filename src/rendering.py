@@ -3,8 +3,9 @@ import math as mt
 import vortexSolver as vs
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani
+import tracing as tr
 
-max_iterates = 50
+max_iterates = 20
 frames = []
 
 sim = vs.FluidSolver(vs.initialGrid())
@@ -17,6 +18,9 @@ frames.append((sim.positions.copy(), sim.vorticities.copy()))
 for t in range(1, max_iterates + 1):
     sim.step()
     print(t, "done")
+    error = sim.computeError()
+    print(error)
+    tr.trace(error, "timestep", (sim.time))
     frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 fig, ax = plt.subplots()

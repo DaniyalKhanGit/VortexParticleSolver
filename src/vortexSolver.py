@@ -5,7 +5,7 @@ import tracing as trace
 
 # constants
 
-time_step = 0.5
+time_step = 0.05
 dx = 0.1
 x0 = 32 * dx
 y0 = 32 * dx
@@ -26,7 +26,7 @@ class FluidSolver:
         self.boundary = boundary
         self.velocity_field = np.zeros((frame_size**2, 2))
         self.velocity_prev = np.zeros((frame_size**2, 2))
-        self.time = 0
+        self.time = t0
 
     # scan through vortons
     def prepare_solver(self, new_time: int):
@@ -94,6 +94,10 @@ class FluidSolver:
         print("convect done")
         self.diffusion()
         print("Diffuse done")
+    
+    def computeError(self):
+        error = np.sqrt(np.mean((self.vorticities - analyticalVorticity(self.positions, self.time))**2))
+        return error
             
 
 

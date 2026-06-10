@@ -2,6 +2,7 @@ import numpy as np
 import math as mt
 import tracing as trace
 
+
 # constants
 
 time_step = 0.5
@@ -10,6 +11,7 @@ x0 = 32 * dx
 y0 = 32 * dx
 kv = 0.1
 t0 = 1
+
 # frame positions from 0 to 63 respectively
 frame_size = 64
 cirStr = 10
@@ -92,6 +94,7 @@ class FluidSolver:
         print("convect done")
         self.diffusion()
         print("Diffuse done")
+            
 
 
 # general functions
@@ -114,4 +117,8 @@ def initialGrid() -> tuple:
             vorticities[index] = posVorticity
     
     return (positions, vorticities)
+
+def analyticalVorticity(positions: np.ndarray, time: int):
+    r_sq = (positions[:, 0] - x0)**2 + (positions[:,1] - y0)**2
+    return (cirStr / (4 * np.pi * kv * time)) * np.exp(-r_sq / (4 * kv * time))
 

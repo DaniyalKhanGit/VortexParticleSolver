@@ -5,14 +5,14 @@ import tracing as trace
 # constants
 
 time_step = 0.5
-x0 = 32
-y0 = 32
+dx = 0.1
+x0 = 32 * dx
+y0 = 32 * dx
 kv = 0.1
-t0 = 100
+t0 = 1
 # frame positions from 0 to 63 respectively
 frame_size = 64
-cirStr = 1
-dx = 0.1
+cirStr = 10
 smoothing = 1
 
 #
@@ -29,7 +29,7 @@ class FluidSolver:
     # scan through vortons
     def prepare_solver(self, new_time: int):
         self.time = new_time
-
+        '''
         for i in range(self.n_particles):
             if self.vorticities[i] == -10000:
                 # remove the particle
@@ -43,6 +43,7 @@ class FluidSolver:
                 self.positions[indice] = 0
 
                 self.n_particles = 0
+        '''
 
     # also need improvement
     def compute_velocity_field(self):
@@ -53,30 +54,18 @@ class FluidSolver:
         for i in range(self.n_particles):
             xth_pos = self.positions[i]
             summation = 0
-            '''
-            # inner loop for every other particle
-            for j in range(self.n_particles):
-                if j == i:
-                    continue
 
-                iXo = xth_pos - self.positions[j]
-                iPo = np.linalg.norm(iXo) / smoothing
-                funcQo = (1 / (2 * mt.pi)) * (1 - np.exp((-(iPo**2)) / 2))
-                circulationO = np.array([-self.vorticities[j] * iXo[1], self.vorticities[j] * iXo[0]])
-                sum1o = (circulationO * funcQo) / ((np.linalg.norm(iXo)**2) + mt.exp(-100))
-                summationO += sum1o
-            '''
             # vectorized inner loop
 
             iX = xth_pos - self.positions
             iP = np.linalg.norm(iX, axis=1) / smoothing
             funcQ = (1 / (2 * np.pi)) * (1 - np.exp((-(iP**2)) / 2))
-            circulation = np.array([-self.vorticities * iX[:,1], self.vorticities * iX[:,0]])
+            gamma = self.vorticities * dx**2
+            circulation = np.array([-gamma * iX[:,1], gamma * iX[:,0]])
             sum1 = (circulation * funcQ) / ((np.linalg.norm(iX, axis=1)**2) + mt.exp(-100))
             summation = np.sum(sum1, axis=1)
 
             self.velocity_field[i] = -summation
-            return
 
     # need improve
     def convection(self):
@@ -92,7 +81,7 @@ class FluidSolver:
         return
 
     def diffusion(self):
-        self.positions += np.random.uniform(0, mt.sqrt(2 * time_step * 0.01))
+        self.positions += np.random.normal(0, np.sqrt(2 * time_step * 0.01), size=self.positions.shape)
 
     def step(self):
         self.prepare_solver(self.time + time_step)
@@ -117,7 +106,7 @@ def initialGrid() -> tuple:
     
     for x in range(frame_size):
         for y in range(frame_size):
-            positionTemp = np.array([x, y])
+            positionTemp = np.array([x * dx, y * dx])
             posVorticity = initVor(positionTemp)
 
             index = x * frame_size + y

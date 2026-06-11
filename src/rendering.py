@@ -5,27 +5,28 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import tracing as tr
 
-max_iterates = 20
+max_iterates = 75
 frames = []
 
 sim = vs.FluidSolver(vs.initialGrid())
 frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 # tracking code
-#center = np.array([3.2, 3.2])
-#initial_angles = np.arctan2(sim.positions[:,1] - center[1], sim.positions[:,0] - center[0])
+center = np.array([3.2, 3.2])
+initial_angles = np.arctan2(sim.positions[:,1] - center[1], sim.positions[:,0] - center[0])
 
 for t in range(1, max_iterates + 1):
     sim.step()
     print(t, "done")
     error = sim.computeError()
-    print(error)
+    # print(error)
     tr.trace(error, "timestep", (sim.time))
+    # tr.exportCSV(sim.time, error)
     frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 fig, ax = plt.subplots()
-scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
-#scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='hsv')
+#scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
+scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='coolwarm')
 plt.colorbar(scatter)
 
 def update(i):

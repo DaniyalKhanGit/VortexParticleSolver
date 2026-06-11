@@ -5,7 +5,7 @@ import tracing as trace
 
 # constants
 
-time_step = 0.05
+time_step = 0.1
 dx = 0.1
 x0 = 32 * dx
 y0 = 32 * dx
@@ -27,6 +27,13 @@ class FluidSolver:
         self.velocity_field = np.zeros((frame_size**2, 2))
         self.velocity_prev = np.zeros((frame_size**2, 2))
         self.time = t0
+        self.boundary_status = False
+        self.boundary_matrix = None
+
+        if boundary != None:
+            self.boundary_status = True
+
+            # boundary matrix handling here
 
     # scan through vortons
     def prepare_solver(self, new_time: int):
@@ -142,3 +149,7 @@ def boundaryComputation(positionA, positionB) -> tuple:
     normal = (positionA[:, 0] * positionB[:, 1]) - (positionA[:, 1] * positionB[:,0])
 
     return (length, midpoint, normal)
+
+
+def boundaryMatrixConstruction(boundary: np.ndarray):
+    pass

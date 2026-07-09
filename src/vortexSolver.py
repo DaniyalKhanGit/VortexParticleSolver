@@ -5,12 +5,14 @@ import tracing as trace
 
 # constants
 
-time_step = 0.1
+time_step = 1
 dx = 0.1
 x0 = 32 * dx
 y0 = 32 * dx
 kv = 0.1
-t0 = 1
+t0 = 0
+epsilon = np.exp(-10)
+diffusionScaling = 0.2
 
 # frame positions from 0 to 63 respectively
 frame_size = 64
@@ -30,17 +32,35 @@ class FluidSolver:
         self.boundary_status = False
         self.boundary_matrix = None
 
+        self.b_lengths = None
+        self.b_midpoints = None
+        self.b_normals = None
+        self.b_tangents = None
+        self.startpoints = None
+    
+        self.rotationMatrix = None
+
         if boundary != None:
             self.boundary_status = True
+
+            computed = boundaryComputation(self.boundary)
+
+            self.b_lengths = computed[0]
+            self.b_midpoints = computed[1]
+            self.b_tangents = computed[2]
+            self.b_normal = computed[3]
+            self.startpoints = computed[4]
+            self.rotationMatrix = computed[5]
 
             # boundary matrix handling here
 
     # scan through vortons
     def prepare_solver(self, new_time: int):
         self.time = new_time
+        
         '''
         for i in range(self.n_particles):
-            if self.vorticities[i] == -10000:
+            if self.vorticities[i] == 0:
                 # remove the particle
                 tempVor = self.vorticities[i]
                 tempPos = self.positions[i]
@@ -90,7 +110,7 @@ class FluidSolver:
         return
 
     def diffusion(self):
-        self.positions += np.random.normal(0, np.sqrt(2 * time_step * 0.01), size=self.positions.shape)
+        self.positions += (np.random.normal(0, np.sqrt(2 * time_step * 0.01), size=self.positions.shape) * diffusionScaling)
 
     def force_addition(self):
         pass
@@ -118,9 +138,23 @@ class FluidSolver:
 
 
 # general functions
+'''
 def initVor(x: np.ndarray) -> int: 
     r_squared = (x[0] - x0)**2 + (x[1] - y0)**2
     return (cirStr / (4 * np.pi * kv * t0)) * np.exp(-r_squared / (4 * kv * t0))
+'''
+
+def initVor(x: np.ndarray) -> int:
+    cx = 32
+    cy = 32
+    r = 10 * dx
+
+    value = 0
+    value += np.exp(-((x[0] - (x0-r))**2 + (x[1]-(y0+r))**2) / (50 * dx * dx))
+    value -= np.exp(-((x[0] - (x0+r))**2 + (x[1]-(y0+r))**2) / (50 * dx * dx))
+    value -= np.exp(-((x[0] - (x0-r))**2 + (x[1]-(y0-r))**2) / (50 * dx * dx))
+    value += np.exp(-((x[0] - (x0+r))**2 + (x[1]-(y0-r))**2) / (50 * dx * dx))
+    return value
 
 def initialGrid() -> tuple:
 
@@ -142,14 +176,27 @@ def analyticalVorticity(positions: np.ndarray, time: int):
     r_sq = (positions[:, 0] - x0)**2 + (positions[:,1] - y0)**2
     return (cirStr / (4 * np.pi * kv * time)) * np.exp(-r_sq / (4 * kv * time))
 
-def boundaryComputation(positionA, positionB) -> tuple:
+def boundaryComputation(boundary) -> tuple:
     # [x, y], [a, b]
-    length = np.linalg.norm(positionA - positionB)
-    midpoint = np.array([((positionA[0] + positionB[0]) / 2), ((positionA[1] + positionB[1]) / 2)])
-    normal = (positionA[:, 0] * positionB[:, 1]) - (positionA[:, 1] * positionB[:,0])
+    startpoints = np.array([b[0] for b in boundary])
+    endpoints = np.array([b[1] for b in boundary])
+    diff = endpoints - startpoints
 
-    return (length, midpoint, normal)
+    length = np.linalg.norm(diff, axis=1)
+    midpoint = (startpoints + endpoints) / 2
+    tangents = diff / length[:, None]
+    normal = np.stack([-tangents[:, 1], tangents[:, 0]], axis=1)
+    rotation_matrix = np.stack([tangents, normal], axis=1)
+
+    return (length, midpoint, tangents, normal, startpoints, rotation_matrix)
 
 
-def boundaryMatrixConstruction(boundary: np.ndarray):
-    pass
+def boundaryMatrixConstruction(boundary: np.ndarray, midpoints, lengths, rotationMs, starts):
+    
+    # for this we gotta first translate to local coords, we do this vectorized since this is N^2
+    # then do our little comps for u* and v*, and then translate back
+    # then we just dot the normal, and we got our entries for the matrix A
+
+    delta = midpoints[None, :, :] - starts[:, None, :]
+    local_coords = np.einsum("ikl,ijl->ijk", rotationMs, delta)
+

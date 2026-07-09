@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import tracing as tr
 
-max_iterates = 75
+max_iterates = 15
 frames = []
 
 sim = vs.FluidSolver(vs.initialGrid())
@@ -21,12 +21,12 @@ for t in range(1, max_iterates + 1):
     error = sim.computeError()
     # print(error)
     tr.trace(error, "timestep", (sim.time))
-    # tr.exportCSV(sim.time, error)
+    tr.exportCSV(sim.time, error)
     frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 fig, ax = plt.subplots()
-#scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
-scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='coolwarm')
+scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=frames[0][1], cmap='coolwarm')
+#scatter = ax.scatter(frames[0][0][:,0], frames[0][0][:,1], c=initial_angles, cmap='coolwarm')
 plt.colorbar(scatter)
 
 def update(i):
@@ -35,7 +35,7 @@ def update(i):
     ax.set_title(f"t = {i}")
     return [scatter]
 
-animation = ani.FuncAnimation(fig, update, frames=len(frames), interval=150)
+animation = ani.FuncAnimation(fig, update, frames=len(frames), interval=500)
 animation.save('../VortexParticleSolver/testoutputs/VortexSim.gif', writer='pillow', fps=1)
 plt.show()
 

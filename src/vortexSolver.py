@@ -48,7 +48,7 @@ class FluidSolver:
             self.b_lengths = computed[0]
             self.b_midpoints = computed[1]
             self.b_tangents = computed[2]
-            self.b_normal = computed[3]
+            self.b_normals = computed[3]
             self.startpoints = computed[4]
             self.rotationMatrix = computed[5]
 
@@ -134,6 +134,46 @@ class FluidSolver:
     def computeError(self):
         error = np.sqrt(np.mean((self.vorticities - analyticalVorticity(self.positions, self.time))**2))
         return error
+
+    def localSpaceComputation(self, points):
+
+        delta = points[None, :, :] - self.startpoints[:, None, :]
+        local_coords = np.einsum("ikl,ijl->ijk", self.rotationMs, delta)
+
+        xlocal = local_coords[..., 0]
+        ylocal = local_coords[..., 1]
+
+        r1 = np.sqrt(xlocal**2 + ylocal**2)
+        r1plus = np.sqrt((xlocal - self.b_lengths[:, None])**2 + ylocal**2)
+
+        # now time for angle 
+
+        beta = np.arctan2(-ylocal, -xlocal) - np.arctan2(-ylocal, self.b_lengths[:, None] - xlocal)
+        beta = np.arctan2(np.sin(beta), np.cos(beta))
+
+        ulocal = beta / (2*np.pi)
+        vlocal = (1 / (2*np.pi)) * np.log((r1plus + np.exp(-20)) / (r1 + np.exp(-20)))
+
+        local_velocity = np.stack([ulocal, vlocal], axis=-1)
+        return np.einsum("ilk,ijl->ijk", self.rotationMs, local_velocity)
+    
+    def buildBoundaryMatrix(self):
+
+        # for this we gotta first translate to local coords, we do this vectorized since this is N^2
+        # then do our little comps for u* and v*, and then translate back
+        # then we just dot the normal, and we got our entries for the matrix A
+
+       panelinfluence = self.localSpaceComputation(self.b_midpoints)
+       
+
+
+
+
+
+
+
+        
+
             
 
 
@@ -191,12 +231,17 @@ def boundaryComputation(boundary) -> tuple:
     return (length, midpoint, tangents, normal, startpoints, rotation_matrix)
 
 
-def boundaryMatrixConstruction(boundary: np.ndarray, midpoints, lengths, rotationMs, starts):
-    
-    # for this we gotta first translate to local coords, we do this vectorized since this is N^2
-    # then do our little comps for u* and v*, and then translate back
-    # then we just dot the normal, and we got our entries for the matrix A
+def makeSquarePanels(low: np.ndarray, high: np.ndarray, npanels: int) -> np.ndarray:
 
-    delta = midpoints[None, :, :] - starts[:, None, :]
-    local_coords = np.einsum("ikl,ijl->ijk", rotationMs, delta)
+    corners = np.array([[low[0], low[1]], [low[0], high[1]], [high[0], low[1]], [high[0], high[1]]], dtype=np.float64)
+
+    segments = []
+    for c in range(4):
+        i1 = corners[c]
+        i2 = corners[(c + 1) % 4]
+        nodes = np.linspace(i1, i2, npanels + 1)
+        for p in range(npanels):
+            segments.append([nodes[p], nodes[p + 1]])
+    return np.array(segments)
+
 

@@ -220,3 +220,4 @@ __marimo__/
 # Testing
 testoutputs/
 *.csv
+src/probe.py

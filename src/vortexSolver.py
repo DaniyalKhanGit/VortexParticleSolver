@@ -31,6 +31,7 @@ class FluidSolver:
         self.time = t0
         self.boundary_status = False
         self.boundary_matrix = None
+        self.A_debug = None
 
         self.b_lengths = None
         self.b_midpoints = None
@@ -40,7 +41,7 @@ class FluidSolver:
     
         self.rotationMatrix = None
 
-        if boundary != None:
+        if boundary is not None:
             self.boundary_status = True
 
             computed = boundaryComputation(self.boundary)
@@ -116,6 +117,7 @@ class FluidSolver:
         pass
 
     def no_slip_boundary(self):
+        # Depreciated (might or might not implement, in the actual model we won't need this constraint but if I wanna test here)
         pass
 
     def no_through_boundary(self):
@@ -138,7 +140,7 @@ class FluidSolver:
     def localSpaceComputation(self, points):
 
         delta = points[None, :, :] - self.startpoints[:, None, :]
-        local_coords = np.einsum("ikl,ijl->ijk", self.rotationMs, delta)
+        local_coords = np.einsum("ikl,ijl->ijk", self.rotationMatrix, delta)
 
         xlocal = local_coords[..., 0]
         ylocal = local_coords[..., 1]
@@ -148,24 +150,24 @@ class FluidSolver:
 
         # now time for angle 
 
-        beta = np.arctan2(-ylocal, -xlocal) - np.arctan2(-ylocal, self.b_lengths[:, None] - xlocal)
+        beta = np.arctan2(-ylocal, self.b_lengths[:, None] - xlocal) - np.arctan2(-ylocal, -xlocal)
         beta = np.arctan2(np.sin(beta), np.cos(beta))
 
         ulocal = beta / (2*np.pi)
         vlocal = (1 / (2*np.pi)) * np.log((r1plus + np.exp(-20)) / (r1 + np.exp(-20)))
 
         local_velocity = np.stack([ulocal, vlocal], axis=-1)
-        return np.einsum("ilk,ijl->ijk", self.rotationMs, local_velocity)
+        return np.einsum("ilk,ijl->ijk", self.rotationMatrix, local_velocity)
     
     def buildBoundaryMatrix(self):
 
-        # for this we gotta first translate to local coords, we do this vectorized since this is N^2
-        # then do our little comps for u* and v*, and then translate back
-        # then we just dot the normal, and we got our entries for the matrix A
-
        panelinfluence = self.localSpaceComputation(self.b_midpoints)
-       
+       A = np.einsum("ijk,jk->ji", panelinfluence, self.b_normals)
+       A_augmented = np.vstack([A, np.ones(A.shape[1])])
+       self.boundary_matrix = np.linalg.pinv(A_augmented)
+       self.A_debug = A
 
+    
 
 
 
@@ -233,7 +235,7 @@ def boundaryComputation(boundary) -> tuple:
 
 def makeSquarePanels(low: np.ndarray, high: np.ndarray, npanels: int) -> np.ndarray:
 
-    corners = np.array([[low[0], low[1]], [low[0], high[1]], [high[0], low[1]], [high[0], high[1]]], dtype=np.float64)
+    corners = np.array([[low[0], low[1]], [high[0], low[1]], [high[0], high[1]], [low[0], high[1]]], dtype=np.float64)
 
     segments = []
     for c in range(4):

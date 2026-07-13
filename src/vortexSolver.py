@@ -32,6 +32,7 @@ class FluidSolver:
         self.boundary_status = False
         self.boundary_matrix = None
         self.A_debug = None
+        self.b_midpoints_velocity = None
 
         self.b_lengths = None
         self.b_midpoints = None
@@ -95,7 +96,7 @@ class FluidSolver:
             sum1 = (circulation * funcQ) / ((np.linalg.norm(iX, axis=1)**2) + mt.exp(-100))
             summation = np.sum(sum1, axis=1)
 
-            self.velocity_field[i] = -summation
+            self.velocity_field[i] = summation
 
     # need improve
     def convection(self):
@@ -122,6 +123,34 @@ class FluidSolver:
 
     def no_through_boundary(self):
         pass
+
+    def evalAtMidpoints(self):
+
+        for i in range(len(self.b_midpoints)):
+            xth_pos = self.b_midpoints[i]
+            summation = 0
+
+            # vectorized inner loop
+
+            iX = xth_pos - self.positions
+            iP = np.linalg.norm(iX, axis=1) / smoothing
+            funcQ = (1 / (2 * np.pi)) * (1 - np.exp((-(iP**2)) / 2))
+            gamma = self.vorticities * dx**2
+            circulation = np.array([-gamma * iX[:,1], gamma * iX[:,0]])
+            sum1 = (circulation * funcQ) / ((np.linalg.norm(iX, axis=1)**2) + mt.exp(-100))
+            summation = np.sum(sum1, axis=1)
+
+            self.b_midpoints_velocity[i] = summation
+            # double check after if summation signs correct
+
+    def panelStrengthCalc(self):
+
+        self.evalAtMidpoints()
+        u_in = -np.array(self.b_midpoints_velocity.copy()) # we dont got free flow yet so just noting
+        vectorB = np.einsum("jk,jk->j", u_in, self.b_normals)
+        panelStrs = self.boundary_matrix @ np.append(vectorB, 0.0)
+        return panelStrs
+
 
     def step(self):
         self.prepare_solver(self.time + time_step)
@@ -168,16 +197,6 @@ class FluidSolver:
        self.A_debug = A
 
     
-
-
-
-
-
-
-        
-
-            
-
 
 # general functions
 '''

@@ -5,7 +5,7 @@ import tracing as trace
 
 # constants
 
-time_step = 1
+time_step = 0.5
 dx = 0.1
 x0 = 32 * dx
 y0 = 32 * dx
@@ -13,6 +13,7 @@ kv = 0.1
 t0 = 0
 epsilon = np.exp(-10)
 diffusionScaling = 0.2
+cutoffScaling = -2 
 
 # frame positions from 0 to 63 respectively
 frame_size = 64
@@ -27,13 +28,15 @@ class FluidSolver:
         self.n_particles = np.size(particles[1])
         self.boundary = boundary
         self.velocity_field = np.zeros((frame_size**2, 2))
-        self.boundary_velocity_field = np.zeros((frame_size**2, 2))
         self.velocity_prev = np.zeros((frame_size**2, 2))
+        self.boundary_velocity_field = np.zeros((frame_size**2, 2))
+        self.boundary_prev_velocity = np.zeros((frame_size**2, 2))
         self.time = t0
         self.boundary_status = False
         self.boundary_matrix = None
         self.A_debug = None
         self.b_midpoints_velocity = None
+        self.needDel = True
 
         self.b_lengths = None
         self.b_midpoints = None
@@ -54,33 +57,43 @@ class FluidSolver:
             self.b_normals = computed[3]
             self.startpoints = computed[4]
             self.rotationMatrix = computed[5]
+            self.b_midpoints_velocity = np.zeros((len(self.b_midpoints), 2))
 
             # boundary matrix handling here
+            self.buildBoundaryMatrix()
 
     # scan through vortons
     def prepare_solver(self, new_time: int):
         self.time = new_time
         
-        '''
-        for i in range(self.n_particles):
-            if self.vorticities[i] == 0:
-                # remove the particle
-                tempVor = self.vorticities[i]
-                tempPos = self.positions[i]
-                indice = self.n_particles - 1
+        # deletion
+        if self.needDel == True:
+            indiceMask = []
+            newParticles = self.n_particles
+            for i in range(self.n_particles):
+                if abs(self.vorticities[i]) > np.exp(cutoffScaling):
+                    indiceMask.append(i)
 
-                self.vorticities[i] = self.vorticities[indice]
-                self.positions[i] = self.positions[indice]
-                self.vorticities[indice] = 0
-                self.positions[indice] = 0
+                # add part here for fluid preprocessing of bounds (if something is in boundary or on it)
+                else:
+                    newParticles -= 1
 
-                self.n_particles = 0
-        '''
+            
+            indiceMask = np.array(indiceMask)
+            self.vorticities = self.vorticities[indiceMask]
+            self.positions = self.positions[indiceMask]
+            self.n_particles = newParticles
+            # maybe delete if this causes issues
+            self.velocity_field = self.velocity_field[indiceMask]
+            self.boundary_velocity_field = self.boundary_velocity_field[indiceMask]
+
+            self.needDel = False
 
     # also need improvement
     def compute_velocity_field(self):
 
         self.velocity_prev = self.velocity_field.copy()
+        self.boundary_prev_velocity = self.boundary_velocity_field.copy()
 
         # outer loop for each particle in the field
         for i in range(self.n_particles):
@@ -105,12 +118,13 @@ class FluidSolver:
             xth = self.positions[i]
             xth_vor = self.vorticities[i]
 
+            totalVelocity = self.velocity_field[i] + self.boundary_velocity_field[i]
+            prevTotalVelocity = self.velocity_prev[i] + self.boundary_prev_velocity[i]
+ 
             if (self.time == 0):
-                self.positions[i] += time_step * self.velocity_field[i]
+                self.positions[i] += time_step * totalVelocity
             else:
-                self.positions[i] = xth + (time_step * (((3/2) * self.velocity_field[i]) - ((1/2) * self.velocity_prev[i])))
-
-        return
+                self.positions[i] = xth + (time_step * (((3/2) * totalVelocity) - ((1/2) * prevTotalVelocity)))
 
     def diffusion(self):
         self.positions += (np.random.normal(0, np.sqrt(2 * time_step * 0.01), size=self.positions.shape) * diffusionScaling)
@@ -127,9 +141,8 @@ class FluidSolver:
         # could also add check later if boundary has changed, but its pretty useless rn
         panelStrengths = self.panelStrengthCalc()
         localEvalCoords = self.localSpaceComputation(self.positions)
-        u_p = np.einsum("ijk, i->ik", localEvalCoords, panelStrengths)
+        u_p = np.einsum("ijk,i->jk", localEvalCoords, panelStrengths)
         self.boundary_velocity_field = u_p
-        self.velocity_field += u_p
 
 
     def evalAtMidpoints(self):
@@ -169,7 +182,7 @@ class FluidSolver:
         print("convect done")
         self.diffusion()
         print("Diffuse done")
-        if self.boundary_status:
+        if self.boundary_status == True:
             self.no_through_boundary()
             print("boundary done")
     

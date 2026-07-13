@@ -27,6 +27,7 @@ class FluidSolver:
         self.n_particles = np.size(particles[1])
         self.boundary = boundary
         self.velocity_field = np.zeros((frame_size**2, 2))
+        self.boundary_velocity_field = np.zeros((frame_size**2, 2))
         self.velocity_prev = np.zeros((frame_size**2, 2))
         self.time = t0
         self.boundary_status = False
@@ -122,7 +123,14 @@ class FluidSolver:
         pass
 
     def no_through_boundary(self):
-        pass
+
+        # could also add check later if boundary has changed, but its pretty useless rn
+        panelStrengths = self.panelStrengthCalc()
+        localEvalCoords = self.localSpaceComputation(self.positions)
+        u_p = np.einsum("ijk, i->ik", localEvalCoords, panelStrengths)
+        self.boundary_velocity_field = u_p
+        self.velocity_field += u_p
+
 
     def evalAtMidpoints(self):
 
@@ -161,6 +169,9 @@ class FluidSolver:
         print("convect done")
         self.diffusion()
         print("Diffuse done")
+        if self.boundary_status:
+            self.no_through_boundary()
+            print("boundary done")
     
     def computeError(self):
         error = np.sqrt(np.mean((self.vorticities - analyticalVorticity(self.positions, self.time))**2))

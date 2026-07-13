@@ -8,7 +8,8 @@ import tracing as tr
 max_iterates = 15
 frames = []
 
-sim = vs.FluidSolver(vs.initialGrid())
+panels = vs.makeSquarePanels(np.array([0, 0]), np.array([6.3, 6.3]), 64)
+sim = vs.FluidSolver(vs.initialGrid(), panels)
 frames.append((sim.positions.copy(), sim.vorticities.copy()))
 
 # tracking code

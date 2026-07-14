@@ -136,13 +136,19 @@ class FluidSolver:
         # Depreciated (might or might not implement, in the actual model we won't need this constraint but if I wanna test here)
         pass
 
-    def no_through_boundary(self):
+    def no_through_boundary(self, tests=None):
 
         # could also add check later if boundary has changed, but its pretty useless rn
         panelStrengths = self.panelStrengthCalc()
-        localEvalCoords = self.localSpaceComputation(self.positions)
+        if tests is None:
+            localEvalCoords = self.localSpaceComputation(self.positions)
+        else:
+            localEvalCoords = self.localSpaceComputation(tests)
         u_p = np.einsum("ijk,i->jk", localEvalCoords, panelStrengths)
         self.boundary_velocity_field = u_p
+
+        if tests is not None:
+            return u_p
 
 
     def evalAtMidpoints(self):
